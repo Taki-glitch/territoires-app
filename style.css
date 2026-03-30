@@ -34,14 +34,9 @@ body {
   font-weight: 700;
 }
 
-h1 {
-  margin: 0;
-}
+h1, h2, h3 { margin: 0; }
 
-.hint {
-  margin: 0 0 18px;
-  color: #4b5563;
-}
+.hint { margin: 0 0 18px; color: #4b5563; }
 
 section {
   background: #fff;
@@ -57,6 +52,21 @@ section {
   align-items: center;
   margin-bottom: 10px;
 }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.stats-grid article {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.stats-grid p { font-size: 24px; font-weight: 700; margin: 8px 0 0; }
 
 table {
   width: 100%;
@@ -96,3 +106,19 @@ button:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.s13-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.s13-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.s13-head p { margin: 6px 0 0; color: #4b5563; }

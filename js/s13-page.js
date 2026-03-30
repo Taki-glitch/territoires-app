@@ -1,64 +1,44 @@
 import { loadRows, toTerritoires } from './data-service.js';
 
+let territoires = [];
+
 init();
 
 async function init() {
-  const tbody = document.querySelector('#s13Table tbody');
-
   try {
     const rows = await loadRows();
-    const territoires = toTerritoires(rows);
-    tbody.innerHTML = '';
-
-    territoires.forEach((t) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${t.id}</td>
-        <td>${t.zone || ''}</td>
-        <td>${t.historique.length}</td>
-        <td><button onclick="downloadS13('${t.id}')">Télécharger PDF</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    window.__territoires = territoires;
+    territoires = toTerritoires(rows);
+    renderCards();
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="4">Erreur de chargement: ${error.message}</td></tr>`;
+    document.getElementById('s13Container').innerHTML = `<p>Erreur: ${error.message}</p>`;
   }
 }
 
-function downloadS13(id) {
-  const territoire = (window.__territoires || []).find((t) => t.id === id);
-  if (!territoire) return;
+function renderCards() {
+  const container = document.getElementById('s13Container');
+  container.innerHTML = '';
 
-  const rowsHtml = territoire.historique.map((h, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td>${h.personne || ''}</td>
-      <td>${h.date_sortie || ''}</td>
-      <td>${h.date_rentree || ''}</td>
-      <td>${h.date_rentree ? 'Terminé' : 'En cours'}</td>
-    </tr>
-  `).join('');
+  territoires.forEach((t) => {
+    const lines = t.historique.map((h, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${h.personne || ''}</td>
+        <td>${h.date_sortie || ''}</td>
+        <td>${h.date_rentree || ''}</td>
+        <td>${h.date_rentree ? 'Terminé' : 'En cours'}</td>
+      </tr>
+    `).join('');
 
-  const html = `
-  <html>
-    <head>
-      <title>S-13 ${territoire.id}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { margin-bottom: 6px; }
-        .meta { margin: 3px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { border: 1px solid #777; padding: 8px; text-align: left; }
-        th { background: #efefef; }
-      </style>
-    </head>
-    <body>
-      <h1>Fiche S-13</h1>
-      <div class="meta"><strong>Territoire:</strong> ${territoire.id}</div>
-      <div class="meta"><strong>Zone:</strong> ${territoire.zone || ''}</div>
-      <div class="meta"><strong>Date génération:</strong> ${new Date().toLocaleDateString('fr-FR')}</div>
+    const card = document.createElement('article');
+    card.className = 's13-card';
+    card.innerHTML = `
+      <div class="s13-head">
+        <div>
+          <h3>Fiche S-13 — ${t.id}</h3>
+          <p>Zone: ${t.zone || ''}</p>
+        </div>
+        <button onclick="printOne('${t.id}')">Imprimer PDF</button>
+      </div>
       <table>
         <thead>
           <tr>
@@ -69,24 +49,54 @@ function downloadS13(id) {
             <th>Statut</th>
           </tr>
         </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
+        <tbody>${lines}</tbody>
       </table>
-    </body>
-  </html>`;
+    `;
 
+    container.appendChild(card);
+  });
+}
+
+function printOne(id) {
+  const card = [...document.querySelectorAll('.s13-card')].find((el) => el.querySelector('h3')?.textContent.includes(id));
+  if (!card) return;
+  openPrintWindow(card.outerHTML, `S-13 ${id}`);
+}
+
+function printAll() {
+  const html = [...document.querySelectorAll('.s13-card')].map((el) => el.outerHTML).join('<div style="page-break-after:always"></div>');
+  openPrintWindow(html, 'Toutes les fiches S-13');
+}
+
+function openPrintWindow(content, title) {
   const w = window.open('', '_blank');
   if (!w) {
-    alert('Veuillez autoriser les popups pour exporter le PDF.');
+    alert('Veuillez autoriser les popups pour imprimer.');
     return;
   }
 
   w.document.open();
-  w.document.write(html);
+  w.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          .s13-card { border: 1px solid #999; padding: 14px; margin-bottom: 20px; }
+          .s13-head { display:flex; justify-content:space-between; align-items:center; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #777; padding: 8px; text-align: left; }
+          th { background: #efefef; }
+          button { display: none; }
+        </style>
+      </head>
+      <body>${content}</body>
+    </html>
+  `);
   w.document.close();
   w.focus();
   w.print();
 }
 
-window.downloadS13 = downloadS13;
+window.printOne = printOne;
+window.printAll = printAll;

@@ -1,19 +1,19 @@
 # territoires-app
 
-Site web connecté à Google Sheets avec **2 pages** :
+Site web connecté à Google Sheets avec **3 pages** :
 
-1. **Gestion tableur** (`index.html`) : importer les données du Google Sheet et modifier les lignes.
-2. **S-13 PDF** (`s13.html`) : générer et télécharger les fiches S-13 en PDF.
+1. **Accueil tableur** (`index.html`) : grand tableau modifiable (territoires + personnes) synchronisé avec Google Sheet.
+2. **Sortis +4 mois** (`stats.html`) : liste des territoires sortis depuis plus de 4 mois + statistiques.
+3. **S-13 imprimables** (`s13.html`) : fiches S-13 prêtes à imprimer / exporter en PDF.
 
-## 1) Base de données Google Sheet
+## 1) Source de données Google Sheet
 
-Google Sheet source :
+Google Sheet :
 `https://docs.google.com/spreadsheets/d/1hlMhtRHQh_Lel95LXjYP7dReuma_Q4ikc-6fHgCgwwI/edit?usp=sharing`
 
-Onglet attendu : `territoires`
+Onglet requis : `territoires`
 
 Colonnes obligatoires :
-
 - `id`
 - `zone`
 - `pdf`
@@ -22,47 +22,42 @@ Colonnes obligatoires :
 - `date_sortie`
 - `date_rentree`
 
-## 2) Import + modification synchronisée vers le tableur
+## 2) Synchronisation site <-> tableur
 
-La lecture des données fonctionne de 2 façons :
+### Lecture
+- Sans Apps Script: lecture via GViz (lecture seule).
+- Avec Apps Script: lecture via `doGet?action=list`.
 
-- **Sans Apps Script** : lecture GViz (lecture seule).
-- **Avec Apps Script** : lecture + écriture (recommandé).
+### Écriture (modification directe du tableur)
+1. Ouvrir **Extensions > Apps Script** dans le Google Sheet.
+2. Copier `google-apps-script/Code.gs`.
+3. Déployer en Web App.
+4. Copier l'URL et la coller dans `js/config.js` (`APPS_SCRIPT_WEBAPP_URL`).
 
-### Activer la synchro bidirectionnelle (lecture/écriture)
+Ensuite, la page d’accueil enregistre les modifications directement dans le tableur (à la perte de focus d’une cellule).
 
-1. Ouvre ton Google Sheet.
-2. Va dans **Extensions > Apps Script**.
-3. Copie le fichier `google-apps-script/Code.gs`.
-4. Déploie en **Web App**.
-5. Copie l’URL du Web App.
-6. Mets cette URL dans `js/config.js` dans `APPS_SCRIPT_WEBAPP_URL`.
+## 3) Pages
 
-Quand `APPS_SCRIPT_WEBAPP_URL` est renseignée :
+### `index.html` — Accueil tableur
+- Grand tableau éditable.
+- Ajout de ligne.
+- Statut de synchronisation par ligne (enregistré/erreur).
 
-- le site importe les lignes depuis le tableur,
-- chaque clic sur **Sauvegarder** met à jour le tableur Google Sheet.
+### `stats.html` — Territoires sortis > 4 mois
+- KPI : total territoires, nombre sortis >4 mois, durée moyenne.
+- Tableau des territoires concernés.
 
-## 3) Page S-13 PDF
+### `s13.html` — Fiches S-13
+- Fiches mises en forme comme un tableau imprimable.
+- Impression PDF unitaire ou globale.
 
-La page `s13.html` affiche les territoires et propose **Télécharger PDF**.
+## 4) Déploiement GitHub Pages
 
-Le PDF est généré au format imprimable depuis le navigateur (popup d’impression).
+Workflow: `.github/workflows/deploy.yml` (déploiement auto sur push `main`).
 
-## 4) Menu du site
-
-- `Gestion tableur` -> `index.html`
-- `S-13 PDF` -> `s13.html`
-
-## 5) Déploiement GitHub Pages
-
-Le workflow `.github/workflows/deploy.yml` publie automatiquement sur GitHub Pages à chaque push sur `main`.
-
-## 6) Vérification locale
+## 5) Vérification locale
 
 ```bash
 npm install
 npm run check:data
 ```
-
-Puis ouvre `index.html` ou `s13.html`.

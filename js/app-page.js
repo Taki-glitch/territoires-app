@@ -1,5 +1,5 @@
 import { COLUMNS } from './config.js';
-import { loadRows, normalizeRow, toTerritoires, upsertRow } from './data-service.js';
+import { loadRows, normalizeRow, upsertRow } from './data-service.js';
 
 let sheetRows = [];
 
@@ -8,23 +8,18 @@ init();
 async function init() {
   try {
     sheetRows = await loadRows();
-    render();
+    renderTable();
   } catch (error) {
-    afficherErreur(error.message);
+    renderError(error.message);
   }
 }
 
-function afficherErreur(message) {
+function renderError(message) {
   const tbody = document.querySelector('#sheetTable tbody');
-  tbody.innerHTML = `<tr><td colspan="8">Erreur: ${message}</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9">Erreur: ${message}</td></tr>`;
 }
 
-function render() {
-  renderSheet();
-  renderQuickSummary();
-}
-
-function renderSheet() {
+function renderTable() {
   const tbody = document.querySelector('#sheetTable tbody');
   tbody.innerHTML = '';
 
@@ -38,64 +33,59 @@ function renderSheet() {
       input.placeholder = col;
       input.dataset.rowIndex = String(rowIndex);
       input.dataset.col = col;
-      input.addEventListener('input', handleInput);
+      input.addEventListener('input', onInput);
+      input.addEventListener('blur', onBlurSave);
       td.appendChild(input);
       tr.appendChild(td);
     });
 
-    const actions = document.createElement('td');
-    actions.innerHTML = `<button onclick="saveRow(${rowIndex})">Sauvegarder</button>`;
-    tr.appendChild(actions);
+    const statusTd = document.createElement('td');
+    statusTd.id = `save-status-${rowIndex}`;
+    statusTd.textContent = '—';
+    tr.appendChild(statusTd);
+
     tbody.appendChild(tr);
   });
 }
 
-function renderQuickSummary() {
-  const tbody = document.querySelector('#resumeTable tbody');
-  tbody.innerHTML = '';
-
-  const territoires = toTerritoires(sheetRows);
-  territoires.forEach((t) => {
-    const last = t.historique[t.historique.length - 1] || {};
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${t.id}</td>
-      <td>${t.zone || ''}</td>
-      <td>${t.historique.length}</td>
-      <td>${last.personne || ''}</td>
-      <td>${last.date_rentree ? 'Disponible' : 'En cours'}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function handleInput(e) {
+function onInput(e) {
   const rowIndex = Number(e.target.dataset.rowIndex);
   const col = e.target.dataset.col;
   sheetRows[rowIndex][col] = e.target.value.trim();
+  setStatus(rowIndex, 'Modifié…');
+}
+
+async function onBlurSave(e) {
+  const rowIndex = Number(e.target.dataset.rowIndex);
+  await saveRow(rowIndex);
 }
 
 function addRow() {
   sheetRows.push(normalizeRow({}));
-  render();
+  renderTable();
 }
 
 async function saveRow(rowIndex) {
   const row = sheetRows[rowIndex];
-  if (!row.id) {
-    alert('ID obligatoire');
+
+  if (!row?.id) {
+    setStatus(rowIndex, 'ID requis');
     return;
   }
 
   try {
+    setStatus(rowIndex, 'Sauvegarde…');
     const rowNumber = await upsertRow(row);
     row.__rowNumber = rowNumber || row.__rowNumber;
-    renderQuickSummary();
-    alert('Sauvegardé dans Google Sheet ✅');
+    setStatus(rowIndex, '✅ Enregistré');
   } catch (error) {
-    alert(`Erreur de sauvegarde: ${error.message}`);
+    setStatus(rowIndex, `❌ ${error.message}`);
   }
 }
 
-window.saveRow = saveRow;
+function setStatus(rowIndex, text) {
+  const cell = document.getElementById(`save-status-${rowIndex}`);
+  if (cell) cell.textContent = text;
+}
+
 window.addRow = addRow;

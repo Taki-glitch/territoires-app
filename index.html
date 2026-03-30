@@ -3,23 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Territoires - Gestion</title>
+  <title>Territoires - Accueil</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="topbar">
     <h1>Territoires</h1>
     <nav>
-      <a class="active" href="index.html">Gestion tableur</a>
-      <a href="s13.html">S-13 PDF</a>
+      <a class="active" href="index.html">Accueil tableur</a>
+      <a href="stats.html">Sortis +4 mois</a>
+      <a href="s13.html">S-13 imprimables</a>
     </nav>
   </header>
 
-  <p class="hint">Les données sont importées depuis Google Sheet. Les modifications sont renvoyées au sheet via Apps Script.</p>
+  <p class="hint">Grand tableau modifiable: toute modification est envoyée au Google Sheet (si Apps Script est configuré).</p>
 
   <section>
     <div class="section-title">
-      <h2>Édition des lignes (comme le tableur)</h2>
+      <h2>Tableau principal (territoires et responsables)</h2>
       <button onclick="addRow()">+ Ajouter une ligne</button>
     </div>
 
@@ -33,23 +34,7 @@
           <th>personne</th>
           <th>date_sortie</th>
           <th>date_rentree</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>Résumé rapide</h2>
-    <table id="resumeTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Zone</th>
-          <th>Passages</th>
-          <th>Dernière personne</th>
-          <th>Statut</th>
+          <th>Statut synchro</th>
         </tr>
       </thead>
       <tbody></tbody>
