@@ -1,0 +1,9 @@
+{
+  "name": "territoires-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "export:excel": "python3 scripts/excel_to_json.py",
+    "check:data": "node scripts/validate-data.mjs"
+  }
+}
