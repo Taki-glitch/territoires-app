@@ -12,9 +12,19 @@ export function normalizeRow(row) {
 
 export async function loadRows() {
   if (APPS_SCRIPT_WEBAPP_URL) {
-    return loadRowsFromAppsScript();
+    try {
+      return await loadRowsFromAppsScript();
+    } catch (error) {
+      console.warn('Apps Script indisponible, fallback GViz:', error.message);
+    }
   }
-  return loadRowsFromGviz();
+
+  try {
+    return await loadRowsFromGviz();
+  } catch (error) {
+    console.warn('GViz indisponible, fallback CSV:', error.message);
+    return loadRowsFromCsvExport();
+  }
 }
 
 async function loadRowsFromAppsScript() {
@@ -28,7 +38,9 @@ async function loadRowsFromAppsScript() {
 async function loadRowsFromGviz() {
   if (!SHEET_ID) throw new Error('ID du Google Sheet introuvable');
 
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const sheetQuery = SHEET_NAME ? `&sheet=${encodeURIComponent(SHEET_NAME)}` : '';
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json${sheetQuery}`;
+
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Lecture GViz impossible (${res.status})`);
 
@@ -50,7 +62,53 @@ async function loadRowsFromGviz() {
       });
       return normalizeRow(obj);
     })
-    .filter((row) => row.id);
+    .filter((row) => row.id || row.zone || row.personne);
+}
+
+async function loadRowsFromCsvExport() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Lecture CSV impossible (${res.status})`);
+
+  const csv = await res.text();
+  const lines = csv.split(/\r?\n/).filter(Boolean);
+  if (!lines.length) return [];
+
+  const headers = parseCsvLine(lines[0]);
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h.trim()] = (values[i] || '').trim();
+    });
+    return normalizeRow(obj);
+  }).filter((row) => row.id || row.zone || row.personne);
+}
+
+function parseCsvLine(line) {
+  const out = [];
+  let cur = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
 }
 
 export async function upsertRow(row) {

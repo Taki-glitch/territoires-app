@@ -9,9 +9,9 @@ Site web connecté à Google Sheets avec **3 pages** :
 ## 1) Source de données Google Sheet
 
 Google Sheet :
-`https://docs.google.com/spreadsheets/d/1hlMhtRHQh_Lel95LXjYP7dReuma_Q4ikc-6fHgCgwwI/edit?usp=sharing`
+`https://docs.google.com/spreadsheets/d/1hlMhtRHQh_Lel95LXjYP7dReuma_Q4ikc-6fHgCgwwI/edit?usp=drivesdk`
 
-Onglet requis : `territoires`
+Onglet requis : `territoires` (ou laisse vide dans config pour prendre le 1er onglet)
 
 Colonnes obligatoires :
 - `id`
@@ -23,6 +23,12 @@ Colonnes obligatoires :
 - `date_rentree`
 
 ## 2) Synchronisation site <-> tableur
+
+## Voir les données du tableur sur le site
+
+Si tu veux **juste voir les données** sur le site, il suffit que le Google Sheet soit partagé en lecture (ou publié).
+Le site tente automatiquement: Apps Script -> GViz -> CSV export.
+
 
 ### Lecture
 - Sans Apps Script: lecture via GViz (lecture seule).
