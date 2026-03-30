@@ -2,186 +2,328 @@ const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1hlMhtRHQh_Lel9
 const SHEET_ID = GOOGLE_SHEET_URL.split('/d/')[1]?.split('/')[0];
 const SHEET_NAME = 'territoires';
 
-// Optionnel: colle ici l'URL de ton Apps Script publié en Web App pour activer l'écriture.
-// Exemple: const APPS_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/.../exec';
+// URL de Web App Apps Script pour mode édition + sauvegarde (fortement recommandé)
 const APPS_SCRIPT_WEBAPP_URL = '';
 
-let territoires = [];
+const COLUMNS = ['id', 'zone', 'pdf', 'lien', 'personne', 'date_sortie', 'date_rentree'];
+
+let sheetRows = [];
 
 init();
 
 async function init() {
-  const tbody = document.querySelector('#territoiresTable tbody');
-
   try {
-    territoires = await chargerDepuisGoogleSheet();
-    afficherTerritoires();
+    await chargerDonnees();
+    render();
   } catch (error) {
-    console.error(error);
-    tbody.innerHTML = `<tr><td colspan="9">Erreur Google Sheet: ${error.message}. Vérifie que l'onglet est bien partagé (lecture) ou publié.</td></tr>`;
+    afficherErreur(error.message);
   }
 }
 
-async function chargerDepuisGoogleSheet() {
+function afficherErreur(message) {
+  const tbody = document.querySelector('#sheetTable tbody');
+  tbody.innerHTML = `<tr><td colspan="9">Erreur: ${message}</td></tr>`;
+}
+
+async function chargerDonnees() {
+  if (APPS_SCRIPT_WEBAPP_URL) {
+    sheetRows = await chargerDepuisAppsScript();
+    return;
+  }
+
+  sheetRows = await chargerDepuisGoogleSheetLectureSeule();
+}
+
+async function chargerDepuisAppsScript() {
+  const url = `${APPS_SCRIPT_WEBAPP_URL}?action=list`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Impossible de charger via Apps Script (${res.status})`);
+  }
+
+  const data = await res.json();
+  if (!data.ok || !Array.isArray(data.rows)) {
+    throw new Error(data.error || 'Réponse Apps Script invalide.');
+  }
+
+  return data.rows.map(normaliserLigne);
+}
+
+async function chargerDepuisGoogleSheetLectureSeule() {
   if (!SHEET_ID) {
-    throw new Error('ID du Google Sheet introuvable.');
+    throw new Error('ID Google Sheet introuvable.');
   }
 
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const res = await fetch(url);
 
   if (!res.ok) {
-    throw new Error(`Chargement impossible (${res.status}).`);
+    throw new Error(`Lecture Google Sheet impossible (${res.status}).`);
   }
 
   const text = await res.text();
   const jsonText = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s)?.[1];
 
   if (!jsonText) {
-    throw new Error('Réponse Google Sheet non reconnue.');
+    throw new Error('Format GViz non reconnu.');
   }
 
   const payload = JSON.parse(jsonText);
   const table = payload?.table;
 
   if (!table?.cols || !table?.rows) {
-    throw new Error('Format de feuille invalide.');
+    throw new Error('Structure de feuille invalide.');
   }
 
   const headers = table.cols.map((c) => (c.label || c.id || '').trim());
-  const rows = table.rows.map((r) => {
+
+  return table.rows.map((r) => {
     const obj = {};
     r.c.forEach((cell, idx) => {
-      const key = headers[idx];
-      obj[key] = (cell?.f ?? cell?.v ?? '').toString().trim();
+      obj[headers[idx]] = (cell?.f ?? cell?.v ?? '').toString().trim();
     });
-    return obj;
-  });
-
-  return convertirLignesVersTerritoires(rows);
+    return normaliserLigne(obj);
+  }).filter((row) => row.id);
 }
 
-function convertirLignesVersTerritoires(rows) {
-  const byId = new Map();
-
-  rows.forEach((row) => {
-    const id = (row.id || '').trim();
-    if (!id) return;
-
-    if (!byId.has(id)) {
-      byId.set(id, {
-        id,
-        zone: (row.zone || '').trim(),
-        pdf: (row.pdf || '').trim(),
-        lien: (row.lien || '').trim(),
-        historique: []
-      });
-    }
-
-    const historiqueEntry = {
-      personne: (row.personne || '').trim(),
-      date_sortie: (row.date_sortie || '').trim(),
-      date_rentree: (row.date_rentree || '').trim()
-    };
-
-    if (historiqueEntry.personne || historiqueEntry.date_sortie || historiqueEntry.date_rentree) {
-      byId.get(id).historique.push(historiqueEntry);
-    }
+function normaliserLigne(row) {
+  const base = { __rowNumber: row.__rowNumber ? Number(row.__rowNumber) : null };
+  COLUMNS.forEach((col) => {
+    base[col] = (row[col] || '').toString().trim();
   });
-
-  const result = [...byId.values()];
-  result.forEach((territoire) => {
-    if (!territoire.historique.length) {
-      territoire.historique.push({ personne: '', date_sortie: '', date_rentree: '' });
-    }
-
-    territoire.historique.sort((a, b) => (a.date_sortie || '').localeCompare(b.date_sortie || ''));
-  });
-
-  return result;
+  return base;
 }
 
-function afficherTerritoires() {
-  const tbody = document.querySelector('#territoiresTable tbody');
+function render() {
+  renderSheetTable();
+  renderResumeS13();
+}
+
+function renderSheetTable() {
+  const tbody = document.querySelector('#sheetTable tbody');
   tbody.innerHTML = '';
 
-  territoires.forEach((t) => {
-    const dernierPassage = t.historique?.[t.historique.length - 1] || {
-      personne: '',
-      date_sortie: '',
-      date_rentree: ''
-    };
+  sheetRows.forEach((row, index) => {
+    const tr = document.createElement('tr');
 
-    const statut = dernierPassage.date_rentree ? 'Disponible' : 'En cours';
+    COLUMNS.forEach((col) => {
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.value = row[col] || '';
+      input.placeholder = col;
+      input.dataset.index = String(index);
+      input.dataset.column = col;
+      input.addEventListener('input', onInputChange);
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+
+    const actionsTd = document.createElement('td');
+    actionsTd.innerHTML = `
+      <button onclick="saveRow(${index})">Sauvegarder</button>
+      <button onclick="sortieDepuisLigne(${index})">Sortie</button>
+      <button onclick="rentreeDepuisLigne(${index})">Rentrée</button>
+    `;
+    tr.appendChild(actionsTd);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function onInputChange(e) {
+  const index = Number(e.target.dataset.index);
+  const column = e.target.dataset.column;
+  sheetRows[index][column] = e.target.value.trim();
+}
+
+function ajouterLigne() {
+  sheetRows.push(normaliserLigne({}));
+  render();
+}
+
+async function saveRow(index) {
+  const row = sheetRows[index];
+
+  if (!row.id) {
+    alert('Le champ id est obligatoire.');
+    return;
+  }
+
+  if (!APPS_SCRIPT_WEBAPP_URL) {
+    alert('Mode lecture seule: configure APPS_SCRIPT_WEBAPP_URL pour sauvegarder dans Google Sheet.');
+    return;
+  }
+
+  const payload = {
+    action: 'upsert',
+    rowNumber: row.__rowNumber,
+    row: pickRowFields(row)
+  };
+
+  const res = await fetch(APPS_SCRIPT_WEBAPP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const out = await res.json();
+  if (!res.ok || !out.ok) {
+    alert(`Sauvegarde impossible: ${out.error || res.status}`);
+    return;
+  }
+
+  row.__rowNumber = out.rowNumber || row.__rowNumber;
+  alert('Ligne sauvegardée dans Google Sheet ✅');
+  renderResumeS13();
+}
+
+async function sortieDepuisLigne(index) {
+  const row = sheetRows[index];
+  const personne = prompt('Nom de la personne ?') || row.personne;
+  if (!personne) return;
+
+  row.personne = personne;
+  row.date_sortie = new Date().toISOString().split('T')[0];
+  row.date_rentree = '';
+
+  render();
+  await saveRow(index);
+}
+
+async function rentreeDepuisLigne(index) {
+  const row = sheetRows[index];
+  if (!row.date_sortie) {
+    alert('Aucune date_sortie sur cette ligne.');
+    return;
+  }
+
+  row.date_rentree = new Date().toISOString().split('T')[0];
+  render();
+  await saveRow(index);
+}
+
+function pickRowFields(row) {
+  const out = {};
+  COLUMNS.forEach((col) => {
+    out[col] = row[col] || '';
+  });
+  return out;
+}
+
+function renderResumeS13() {
+  const tbody = document.querySelector('#s13Table tbody');
+  tbody.innerHTML = '';
+
+  const territoires = toTerritoires(sheetRows);
+
+  territoires.forEach((t) => {
+    const dernier = t.historique[t.historique.length - 1] || { date_rentree: '', personne: '' };
+    const statut = dernier.date_rentree ? 'Disponible' : 'En cours';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${t.id}</td>
       <td>${t.zone}</td>
-      <td><a href="${t.pdf}" target="_blank" rel="noreferrer">PDF</a></td>
-      <td><a href="${t.lien}" target="_blank" rel="noreferrer">Maps</a></td>
-      <td>${dernierPassage.personne || ''}</td>
-      <td>${dernierPassage.date_sortie || ''}</td>
-      <td>${dernierPassage.date_rentree || ''}</td>
+      <td>${t.historique.length}</td>
+      <td>${dernier.personne || ''}</td>
       <td>${statut}</td>
-      <td>
-        <button onclick="sortie('${t.id}')">Sortie</button>
-        <button onclick="rentree('${t.id}')">Rentrée</button>
-      </td>
+      <td><button onclick="telechargerS13('${t.id}')">Télécharger S-13 PDF</button></td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-async function sortie(id) {
-  const personne = prompt('Nom de la personne ?');
-  if (!personne) return;
+function toTerritoires(rows) {
+  const byId = new Map();
 
-  const date = new Date().toISOString().split('T')[0];
-  const territoire = territoires.find((t) => t.id === id);
+  rows.forEach((row) => {
+    if (!row.id) return;
 
-  territoire.historique.push({
-    personne,
-    date_sortie: date,
-    date_rentree: ''
+    if (!byId.has(row.id)) {
+      byId.set(row.id, {
+        id: row.id,
+        zone: row.zone,
+        pdf: row.pdf,
+        lien: row.lien,
+        historique: []
+      });
+    }
+
+    const h = {
+      personne: row.personne,
+      date_sortie: row.date_sortie,
+      date_rentree: row.date_rentree
+    };
+
+    if (h.personne || h.date_sortie || h.date_rentree) {
+      byId.get(row.id).historique.push(h);
+    }
   });
 
-  afficherTerritoires();
-  await synchroniserGoogleSheet({ action: 'sortie', id, personne, date_sortie: date });
-}
-
-async function rentree(id) {
-  const date = new Date().toISOString().split('T')[0];
-  const territoire = territoires.find((t) => t.id === id);
-  const dernier = territoire.historique[territoire.historique.length - 1];
-
-  if (!dernier || dernier.date_rentree) {
-    alert('Pas de sortie en cours !');
-    return;
-  }
-
-  dernier.date_rentree = date;
-  afficherTerritoires();
-  await synchroniserGoogleSheet({ action: 'rentree', id, date_rentree: date });
-}
-
-async function synchroniserGoogleSheet(payload) {
-  if (!APPS_SCRIPT_WEBAPP_URL) {
-    console.info('Mode lecture seule: aucune URL Apps Script configurée.');
-    return;
-  }
-
-  try {
-    const res = await fetch(APPS_SCRIPT_WEBAPP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      throw new Error(`Sync impossible (${res.status})`);
+  return [...byId.values()].map((t) => {
+    if (!t.historique.length) {
+      t.historique.push({ personne: '', date_sortie: '', date_rentree: '' });
     }
-  } catch (error) {
-    alert(`Mise à jour locale OK, mais sync Google Sheet KO: ${error.message}`);
-  }
+    t.historique.sort((a, b) => (a.date_sortie || '').localeCompare(b.date_sortie || ''));
+    return t;
+  });
 }
+
+function telechargerS13(id) {
+  const territoire = toTerritoires(sheetRows).find((t) => t.id === id);
+  if (!territoire) return;
+
+  const lignes = territoire.historique.map((h) => `
+    <tr>
+      <td>${h.personne || ''}</td>
+      <td>${h.date_sortie || ''}</td>
+      <td>${h.date_rentree || ''}</td>
+      <td>${h.date_rentree ? 'Terminé' : 'En cours'}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <html>
+      <head>
+        <title>S-13 ${territoire.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          h1 { margin-bottom: 4px; }
+          .meta { margin-bottom: 16px; color: #444; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #999; padding: 8px; text-align: left; }
+          th { background: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        <h1>Résumé S-13</h1>
+        <div class="meta">Territoire: <strong>${territoire.id}</strong> — ${territoire.zone || ''}</div>
+        <div class="meta">Généré le ${new Date().toLocaleDateString('fr-FR')}</div>
+        <table>
+          <thead>
+            <tr><th>Personne</th><th>Date sortie</th><th>Date rentrée</th><th>Statut</th></tr>
+          </thead>
+          <tbody>${lignes}</tbody>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('Autorise les popups pour générer le PDF S-13.');
+    return;
+  }
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+window.ajouterLigne = ajouterLigne;
+window.saveRow = saveRow;
+window.sortieDepuisLigne = sortieDepuisLigne;
+window.rentreeDepuisLigne = rentreeDepuisLigne;
+window.telechargerS13 = telechargerS13;

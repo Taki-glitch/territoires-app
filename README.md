@@ -1,17 +1,21 @@
 # territoires-app
 
-Application web de gestion des territoires connectée à Google Sheets.
+Application web connectée à Google Sheets pour gérer les territoires, compléter les informations type **S-13** et générer un **PDF récapitulatif** par territoire.
 
-## Base de données Google Sheet
+## 1) Objectif
 
-Feuille utilisée :
+- Avoir une interface web qui ressemble à un tableur (édition ligne par ligne).
+- Utiliser Google Sheets comme base de données.
+- Générer un résumé S-13 imprimable en PDF.
+
+## 2) Feuille Google attendue
+
+Lien utilisé :
 `https://docs.google.com/spreadsheets/d/1hlMhtRHQh_Lel95LXjYP7dReuma_Q4ikc-6fHgCgwwI/edit?usp=sharing`
 
-### Onglet attendu
+Nom de l’onglet : `territoires`
 
-Nom d’onglet : `territoires`
-
-Colonnes (ligne 1) :
+Colonnes obligatoires (ligne d’en-tête) :
 
 - `id`
 - `zone`
@@ -21,32 +25,38 @@ Colonnes (ligne 1) :
 - `date_sortie`
 - `date_rentree`
 
-Chaque ligne représente un passage (historique).
+## 3) Connexion Google Sheets
 
-## Fonctionnement
+### Lecture seule (sans Apps Script)
 
-- L’application lit les données depuis Google Sheets (API GViz en lecture).
-- Les boutons **Sortie/Rentrée** mettent à jour l’interface immédiatement.
-- Pour enregistrer réellement dans Google Sheets, il faut configurer un Web App Apps Script.
+- L’app lit le Google Sheet via l’API GViz.
+- Tu visualises les lignes dans la vue tableur.
+- Les modifications ne sont pas persistées côté Google Sheet.
 
-## Activer l’écriture dans Google Sheets (recommandé)
+### Lecture + écriture (recommandé)
 
-1. Ouvre ton tableur Google.
+1. Ouvre ton Google Sheet.
 2. Va dans **Extensions > Apps Script**.
-3. Copie le contenu de `google-apps-script/Code.gs`.
-4. Déploie en **Web app** :
-   - Exécuter en tant que : toi.
-   - Accès : toute personne ayant le lien (ou selon ton besoin).
-5. Copie l’URL du Web App.
+3. Copie `google-apps-script/Code.gs`.
+4. Déploie en **Web App**.
+5. Copie l’URL de déploiement.
 6. Dans `script.js`, renseigne `APPS_SCRIPT_WEBAPP_URL`.
 
-Ensuite, les actions Sortie/Rentrée seront aussi persistées dans le tableur.
+Avec cette config, les boutons **Sauvegarder / Sortie / Rentrée** écrivent directement dans le sheet.
 
-## Déploiement GitHub Pages
+## 4) Générer les PDF S-13
+
+Dans la section **Résumé S-13 par territoire** :
+
+1. Clique **Télécharger S-13 PDF** sur le territoire voulu.
+2. Une vue imprimable s’ouvre.
+3. Choisis **Imprimer > Enregistrer en PDF**.
+
+## 5) Déploiement GitHub Pages
 
 Le workflow `.github/workflows/deploy.yml` déploie automatiquement le site sur GitHub Pages à chaque push sur `main`.
 
-## Vérification locale
+## 6) Vérification locale
 
 ```bash
 npm install

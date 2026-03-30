@@ -1,81 +1,104 @@
 /**
- * Déploie ce script en Web App pour permettre à l'app web
- * d'écrire dans ton Google Sheet "territoires".
+ * Apps Script pour gérer l'app web "territoires" depuis Google Sheets.
+ * - doGet?action=list : renvoie toutes les lignes
+ * - doPost action=upsert : ajoute/met à jour une ligne
  */
 const SHEET_NAME = 'territoires';
+const REQUIRED_HEADERS = ['id', 'zone', 'pdf', 'lien', 'personne', 'date_sortie', 'date_rentree'];
+
+function doGet(e) {
+  try {
+    const action = (e.parameter.action || 'list').toLowerCase();
+    if (action !== 'list') {
+      return jsonResponse({ ok: false, error: 'Action GET inconnue' });
+    }
+
+    const sheet = getSheet();
+    const values = sheet.getDataRange().getValues();
+    if (!values.length) {
+      return jsonResponse({ ok: true, rows: [] });
+    }
+
+    const headers = values[0].map((h) => String(h).trim());
+    const idx = mapHeaders(headers);
+
+    const rows = [];
+    for (let r = 1; r < values.length; r++) {
+      const line = values[r];
+      const rowObj = { __rowNumber: r + 1 };
+      REQUIRED_HEADERS.forEach((h) => {
+        rowObj[h] = String(line[idx[h]] || '').trim();
+      });
+      rows.push(rowObj);
+    }
+
+    return jsonResponse({ ok: true, rows });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: err.message });
+  }
+}
 
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents || '{}');
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const action = String(payload.action || '').toLowerCase();
 
-    if (!sheet) {
-      return jsonResponse({ ok: false, error: `Onglet ${SHEET_NAME} introuvable` }, 404);
+    if (action !== 'upsert') {
+      return jsonResponse({ ok: false, error: 'Action POST inconnue' });
     }
 
+    const sheet = getSheet();
     const values = sheet.getDataRange().getValues();
     const headers = values[0].map((h) => String(h).trim());
     const idx = mapHeaders(headers);
 
-    if (payload.action === 'sortie') {
-      sheet.appendRow([
-        payload.id || '',
-        findLastValue(values, idx.id, payload.id, idx.zone) || '',
-        findLastValue(values, idx.id, payload.id, idx.pdf) || '',
-        findLastValue(values, idx.id, payload.id, idx.lien) || '',
-        payload.personne || '',
-        payload.date_sortie || '',
-        ''
-      ]);
-      return jsonResponse({ ok: true, action: 'sortie' });
+    const row = payload.row || {};
+    const rowValues = REQUIRED_HEADERS.map((h) => String(row[h] || '').trim());
+
+    if (!rowValues[0]) {
+      return jsonResponse({ ok: false, error: 'id obligatoire' });
     }
 
-    if (payload.action === 'rentree') {
-      for (let r = values.length; r >= 2; r--) {
-        const row = values[r - 1];
-        if (
-          String(row[idx.id] || '').trim() === String(payload.id || '').trim() &&
-          !String(row[idx.date_rentree] || '').trim()
-        ) {
-          sheet.getRange(r, idx.date_rentree + 1).setValue(payload.date_rentree || '');
-          return jsonResponse({ ok: true, action: 'rentree' });
-        }
-      }
-      return jsonResponse({ ok: false, error: 'Aucune sortie en cours trouvée' }, 404);
+    const rowNumber = Number(payload.rowNumber || 0);
+    if (rowNumber >= 2) {
+      sheet.getRange(rowNumber, 1, 1, headers.length).setValues([fullRow(headers, idx, rowValues)]);
+      return jsonResponse({ ok: true, rowNumber });
     }
 
-    return jsonResponse({ ok: false, error: 'Action inconnue' }, 400);
+    sheet.appendRow(fullRow(headers, idx, rowValues));
+    return jsonResponse({ ok: true, rowNumber: sheet.getLastRow() });
   } catch (err) {
-    return jsonResponse({ ok: false, error: err.message }, 500);
+    return jsonResponse({ ok: false, error: err.message });
   }
+}
+
+function getSheet() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    throw new Error(`Onglet '${SHEET_NAME}' introuvable`);
+  }
+  return sheet;
 }
 
 function mapHeaders(headers) {
-  const map = {};
-  ['id', 'zone', 'pdf', 'lien', 'personne', 'date_sortie', 'date_rentree'].forEach((name) => {
-    map[name] = headers.indexOf(name);
-  });
-
-  Object.keys(map).forEach((k) => {
-    if (map[k] === -1) {
-      throw new Error(`Colonne obligatoire manquante: ${k}`);
+  const idx = {};
+  REQUIRED_HEADERS.forEach((h) => {
+    idx[h] = headers.indexOf(h);
+    if (idx[h] === -1) {
+      throw new Error(`Colonne obligatoire manquante: ${h}`);
     }
   });
-
-  return map;
+  return idx;
 }
 
-function findLastValue(values, idIndex, id, targetIndex) {
-  for (let r = values.length - 1; r >= 1; r--) {
-    if (String(values[r][idIndex] || '').trim() === String(id || '').trim()) {
-      return values[r][targetIndex] || '';
-    }
-  }
-  return '';
+function fullRow(headers, idx, values) {
+  const out = new Array(headers.length).fill('');
+  REQUIRED_HEADERS.forEach((h, i) => {
+    out[idx[h]] = values[i];
+  });
+  return out;
 }
 
 function jsonResponse(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
