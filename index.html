@@ -1,19 +1,26 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestion des Territoires - S-13</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Territoires - Gestion</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Gestion des Territoires (vue type Google Sheet)</h1>
-  <p class="hint">Remplis les lignes comme dans ton tableur puis sauvegarde. Le résumé S-13 permet de générer le PDF.</p>
+  <header class="topbar">
+    <h1>Territoires</h1>
+    <nav>
+      <a class="active" href="index.html">Gestion tableur</a>
+      <a href="s13.html">S-13 PDF</a>
+    </nav>
+  </header>
+
+  <p class="hint">Les données sont importées depuis Google Sheet. Les modifications sont renvoyées au sheet via Apps Script.</p>
 
   <section>
     <div class="section-title">
-      <h2>Feuille territoires</h2>
-      <button onclick="ajouterLigne()">+ Ajouter une ligne</button>
+      <h2>Édition des lignes (comme le tableur)</h2>
+      <button onclick="addRow()">+ Ajouter une ligne</button>
     </div>
 
     <table id="sheetTable">
@@ -26,7 +33,7 @@
           <th>personne</th>
           <th>date_sortie</th>
           <th>date_rentree</th>
-          <th>Actions</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -34,25 +41,21 @@
   </section>
 
   <section>
-    <div class="section-title">
-      <h2>Résumé S-13 par territoire</h2>
-    </div>
-
-    <table id="s13Table">
+    <h2>Résumé rapide</h2>
+    <table id="resumeTable">
       <thead>
         <tr>
           <th>ID</th>
           <th>Zone</th>
-          <th>Nb passages</th>
+          <th>Passages</th>
           <th>Dernière personne</th>
           <th>Statut</th>
-          <th>PDF</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </section>
 
-  <script src="script.js"></script>
+  <script type="module" src="js/app-page.js"></script>
 </body>
 </html>
