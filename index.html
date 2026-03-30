@@ -1,32 +1,46 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Gestion des Territoires</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Territoires - Accueil</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<h1>Gestion des Territoires</h1>
+  <header class="topbar">
+    <h1>Territoires</h1>
+    <nav>
+      <a class="active" href="index.html">Accueil tableur</a>
+      <a href="stats.html">Sortis +4 mois</a>
+      <a href="s13.html">S-13 imprimables</a>
+    </nav>
+  </header>
 
-<table id="territoiresTable">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Zone</th>
-      <th>PDF</th>
-      <th>Google Maps</th>
-      <th>Personne actuelle</th>
-      <th>Date sortie</th>
-      <th>Date rentrée</th>
-      <th>Statut</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- Les lignes seront générées par JS -->
-  </tbody>
-</table>
+  <p class="hint">Grand tableau modifiable: toute modification est envoyée au Google Sheet (si Apps Script est configuré).</p>
 
-<script src="script.js"></script>
+  <section>
+    <div class="section-title">
+      <h2>Tableau principal (territoires et responsables)</h2>
+      <button onclick="addRow()">+ Ajouter une ligne</button>
+    </div>
+
+    <table id="sheetTable">
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>zone</th>
+          <th>pdf</th>
+          <th>lien</th>
+          <th>personne</th>
+          <th>date_sortie</th>
+          <th>date_rentree</th>
+          <th>Statut synchro</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <script type="module" src="js/app-page.js"></script>
 </body>
 </html>

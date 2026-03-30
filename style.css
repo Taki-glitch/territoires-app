@@ -1,4 +1,124 @@
-body { font-family: Arial; padding: 20px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-button { padding: 5px 10px; margin: 2px; }
+:root {
+  --line: #d7dce5;
+  --head: #f3f6fb;
+  --text: #1f2937;
+  --accent: #2563eb;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  color: var(--text);
+  margin: 0;
+  padding: 24px;
+  background: #fafafa;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.topbar nav a {
+  text-decoration: none;
+  color: #334155;
+  margin-left: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.topbar nav a.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+h1, h2, h3 { margin: 0; }
+
+.hint { margin: 0 0 18px; color: #4b5563; }
+
+section {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.stats-grid article {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.stats-grid p { font-size: 24px; font-weight: 700; margin: 8px 0 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  background: var(--head);
+  font-size: 14px;
+}
+
+td input {
+  width: 100%;
+  border: 1px solid #c9d1e0;
+  border-radius: 6px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+button {
+  border: 1px solid #b6c2d3;
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.s13-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.s13-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.s13-head p { margin: 6px 0 0; color: #4b5563; }
